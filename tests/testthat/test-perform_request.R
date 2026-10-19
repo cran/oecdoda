@@ -7,20 +7,20 @@ test_that("perform_request returns response object on success", {
   with_mocked_bindings(
     perform_request = function(...) mock_resp,
     {
-      result <- perform_request(mock_req, context = "test")
+      result <- perform_request(mock_req)
       expect_s3_class(result, "response")
       expect_equal(result$status, 200)
     }
   )
 })
 
-test_that("perform_request throws cli_abort on error", {
+test_that("perform_request throws warning on error", {
   with_mocked_bindings(
     req_perform = function(...) {
       stop("API connection error: Connection timed out")
     },
     expect_message(
-      perform_request("abcd", "test"),
+      perform_request("abcd"),
       "Failed to retrieve data from OECD API."
     )
   )
@@ -52,6 +52,41 @@ test_that("create_request includes filters in request URL", {
   expect_true(grepl("USA.", req$url))
   expect_true(grepl("format=csvfilewithlabels", req$url))
   expect_true(grepl("dimensionAtObservation=AllDimensions", req$url))
+})
+
+test_that("create_request appends version to the dataflow", {
+  req <- create_request(
+    resource = "DSD_CRS@DF_CRS",
+    version = "1.7"
+  )
+
+  path <- utils::URLdecode(httr2::url_parse(req$url)$path)
+  expect_match(path, "DSD_CRS@DF_CRS,1\\.7/?$")
+})
+
+test_that("create_request omits version when it is NULL", {
+  req <- create_request(
+    resource = "DSD_CRS@DF_CRS",
+    version = NULL
+  )
+
+  path <- utils::URLdecode(httr2::url_parse(req$url)$path)
+  expect_match(path, "DSD_CRS@DF_CRS/?$")
+})
+
+test_that("create_request rejects invalid versions", {
+  expect_error(create_request(resource = "DAC1", version = 1.7), "version")
+  expect_error(create_request(resource = "DAC1", version = c("1.6", "1.7")))
+  expect_error(create_request(resource = "DAC1", version = NA_character_))
+})
+
+test_that("build_filters orders DAC1 filters by dimension position", {
+  key <- build_filters(
+    list(donor = "FRA", measure = 11017, sector = 1000),
+    "DSD_DAC1@DF_DAC1"
+  )
+
+  expect_equal(key, "FRA.1000.11017....")
 })
 
 # parse_response ---------------------------------------------------------

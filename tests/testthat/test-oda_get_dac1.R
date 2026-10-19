@@ -1,11 +1,17 @@
 test_that("oda_get_dac1 returns processed data by default", {
   with_mocked_bindings(
-    `create_request` = function(resource, filters, start_year, end_year) {
-      expect_equal(resource, "DSD_DAC1@DF_DAC1,1.5")
+    `create_request` = function(
+      resource,
+      version,
+      filters,
+      start_year,
+      end_year
+    ) {
+      expect_equal(resource, "DSD_DAC1@DF_DAC1")
+      expect_equal(version, "1.8")
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
-      expect_equal(context, "oda_get_dac1")
+    `perform_request` = function(...) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) {
@@ -61,7 +67,7 @@ test_that("oda_get_dac1 returns raw data when pre_process = FALSE", {
     `create_request` = function(...) {
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
+    `perform_request` = function(req) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) raw_data,
@@ -74,14 +80,21 @@ test_that("oda_get_dac1 returns raw data when pre_process = FALSE", {
 
 test_that("oda_get_dac1 passes filters and year parameters to create_request", {
   with_mocked_bindings(
-    `create_request` = function(resource, filters, start_year, end_year) {
-      expect_equal(resource, "DSD_DAC1@DF_DAC1,1.5")
+    `create_request` = function(
+      resource,
+      version,
+      filters,
+      start_year,
+      end_year
+    ) {
+      expect_equal(resource, "DSD_DAC1@DF_DAC1")
+      expect_equal(version, "1.8")
       expect_equal(filters, list(donor = "USA"))
       expect_equal(start_year, 2000)
       expect_equal(end_year, 2020)
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
+    `perform_request` = function(...) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) {
@@ -110,6 +123,21 @@ test_that("oda_get_dac1 passes filters and year parameters to create_request", {
         pre_process = TRUE
       )
       expect_s3_class(result, "tbl_df")
+    }
+  )
+})
+
+test_that("oda_get_dac1 returns nothing if request was unsuccessful", {
+  with_mocked_bindings(
+    `perform_request` = function(...) NULL,
+    {
+      result <- oda_get_dac1(
+        start_year = 2000,
+        end_year = 2020,
+        filters = list(donor = "USA"),
+        pre_process = TRUE
+      )
+      expect_equal(result, NULL)
     }
   )
 })

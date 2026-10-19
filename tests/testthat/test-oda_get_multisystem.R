@@ -3,19 +3,20 @@ test_that("oda_get_multisystem returns processed data by default", {
     `create_request` = function(
       base_url,
       resource,
+      version,
       filters,
       start_year,
       end_year
     ) {
       expect_equal(resource, "DSD_MULTI@DF_MULTI")
+      expect_equal(version, "1.7")
       expect_equal(
         base_url,
         "https://sdmx.oecd.org/dcd-public/rest/data/OECD.DCD.FSD"
       )
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
-      expect_equal(context, "oda_get_multisystem")
+    `perform_request` = function(...) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) {
@@ -81,7 +82,7 @@ test_that("oda_get_multisystem returns raw data when pre_process = FALSE", {
     `create_request` = function(...) {
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
+    `perform_request` = function(...) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) raw_data,
@@ -97,17 +98,19 @@ test_that("oda_get_multisystem passes filters & year to create_request", {
     `create_request` = function(
       base_url,
       resource,
+      version,
       filters,
       start_year,
       end_year
     ) {
       expect_equal(resource, "DSD_MULTI@DF_MULTI")
+      expect_equal(version, "1.7")
       expect_equal(filters, list(donor = "DAC", recipient = "DPGC"))
       expect_equal(start_year, 2010)
       expect_equal(end_year, 2020)
       structure(list(url = "mock_url"), class = "httr2_request")
     },
-    `perform_request` = function(req, context) {
+    `perform_request` = function(...) {
       structure(list(status = 200), class = "httr2_response")
     },
     `parse_response` = function(resp) {
@@ -140,6 +143,21 @@ test_that("oda_get_multisystem passes filters & year to create_request", {
         pre_process = TRUE
       )
       expect_s3_class(result, "tbl_df")
+    }
+  )
+})
+
+test_that("oda_get_multisystem returns nothing if request was unsuccessful", {
+  with_mocked_bindings(
+    `perform_request` = function(...) NULL,
+    {
+      result <- oda_get_multisystem(
+        start_year = 2000,
+        end_year = 2020,
+        filters = list(donor = "USA"),
+        pre_process = TRUE
+      )
+      expect_equal(result, NULL)
     }
   )
 })

@@ -1,6 +1,6 @@
 #' @keywords internal
 #' @noRd
-perform_request <- function(req, context) {
+perform_request <- function(req) {
   capacity <- getOption("oecdoda.rate_capacity", 20)
   fill_time <- getOption("oecdoda.rate_fill_time", 3600)
 
@@ -11,14 +11,14 @@ perform_request <- function(req, context) {
         httr2::req_perform()
     },
     error = function(e) {
-      cli::cli_inform(
-        c(
-          "!" = "Failed to retrieve data from OECD API.",
-          "i" = "Error message: {conditionMessage(e)}"
+      cli::cli_alert_warning(
+        paste(
+          "Failed to retrieve data from OECD API.",
+          "Error message: {conditionMessage(e)}"
         ),
-        call = call(context)
+        wrap = TRUE
       )
-      NULL
+      invisible(NULL)
     }
   )
 }
@@ -28,10 +28,13 @@ perform_request <- function(req, context) {
 create_request <- function(
   base_url = "https://sdmx.oecd.org/public/rest/data/OECD.DCD.FSD",
   resource,
+  version = NULL,
   filters = NULL,
   start_year = NULL,
   end_year = NULL
 ) {
+  validate_version(version)
+
   if (is.null(filters)) {
     filters_processed <- ""
   } else {
@@ -52,13 +55,29 @@ create_request <- function(
 
   # Construct request
   url <- paste0(base_url, ",", resource)
+  if (!is.null(version)) {
+    url <- paste0(url, ",", version)
+  }
   req <- httr2::request(url) |>
     httr2::req_url_path_append(filters_processed) |>
     httr2::req_url_query(!!!params) |>
     httr2::req_user_agent(
-      "oecdoda R package (https://github.com/tidy-intelligence/r-oecdoda)"
+      "oecdoda R package (https://github.com/econdataverse/r-oecdoda)"
     )
   req
+}
+
+#' @keywords internal
+#' @noRd
+validate_version <- function(version) {
+  if (
+    !is.null(version) &&
+      !(is.character(version) && length(version) == 1 && !is.na(version))
+  ) {
+    cli::cli_abort(
+      "{.arg version} must be {.code NULL} or a single string, e.g. {.val 1.7}."
+    )
+  }
 }
 
 #' @keywords internal
